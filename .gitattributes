@@ -1,0 +1,34 @@
+# Normalize all text files to LF in the repository, and check them out with
+# the platform's native line endings (CRLF on Windows). This keeps diffs clean
+# while the working tree behaves naturally on every OS.
+* text=auto
+
+# Explicitly declare the source file types (all text, LF in the repo).
+*.gs     text
+*.js     text
+*.ts     text
+*.html   text
+*.css    text
+*.json   text
+*.md     text
+*.go     text
+*.mod    text
+Makefile text
+.gitignore text
+.gitattributes text
+
+# Windows batch/cmd files must stay CRLF in the repo.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# No native line-ending meaning for binary files: leave them untouched.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.tar  binary
+*.exe  binary
+*.dll  binary

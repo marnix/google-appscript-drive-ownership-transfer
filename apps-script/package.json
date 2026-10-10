@@ -1,0 +1,20 @@
+{
+  "name": "drive-ownership-transfer-apps-script",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Apps Script web app that lets departing people offer Drive ownership to the org account.",
+  "scripts": {
+    "login": "clasp login",
+    "create": "clasp create --type webapp --title \"Drive ownership transfer\"",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "version": "clasp version",
+    "deploy": "clasp deploy",
+    "deployments": "clasp deployments",
+    "open": "clasp open",
+    "logs": "clasp logs"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.4.1"
+  }
+}

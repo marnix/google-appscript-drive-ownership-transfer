@@ -1,0 +1,6 @@
+# Only .gs, .html and appsscript.json should reach the Apps Script project.
+**/**
+!appsscript.json
+!*.gs
+!*.html
+!*.js

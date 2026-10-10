@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="<?= lang ?>">
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --bg: #f6f8fc;
+        --card: #ffffff;
+        --text: #202124;
+        --muted: #5f6368;
+        --border: #dadce0;
+        --primary: #1a73e8;
+        --primary-text: #ffffff;
+        --warn-bg: #fef7e0;
+        --warn-border: #f9ab00;
+        --err-bg: #fce8e6;
+        --err-text: #c5221f;
+        --ok: #188038;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 Roboto, Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        max-width: 640px;
+        width: 100%;
+        padding: 28px 28px 24px;
+        box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
+      }
+      h1 { font-size: 22px; font-weight: 500; margin: 0 0 8px; }
+      .intro { color: var(--muted); margin: 0 0 20px; }
+      dl { margin: 0 0 20px; }
+      dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+      dd { margin: 2px 0 14px; font-size: 15px; word-break: break-word; }
+      dd:last-child { margin-bottom: 0; }
+      .hint { color: var(--muted); font-size: 12px; margin-top: -8px; }
+      .notice {
+        background: #e8f0fe;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 0 0 20px;
+        font-size: 13px;
+      }
+      .notice .role { color: var(--muted); }
+      label.check { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 16px; cursor: pointer; }
+      label.check input { margin-top: 3px; }
+      button {
+        font: inherit;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--primary);
+        padding: 9px 16px;
+        cursor: pointer;
+      }
+      button.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+      button:disabled { opacity: 0.55; cursor: default; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .progress {
+        height: 8px;
+        background: #e8eaed;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 16px 0 8px;
+      }
+      .progress > div { height: 100%; width: 0; background: var(--primary); transition: width 0.2s; }
+      .status { color: var(--muted); font-size: 13px; }
+      .error {
+        background: var(--err-bg);
+        color: var(--err-text);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-top: 16px;
+        white-space: pre-wrap;
+      }
+      .result { margin-top: 16px; }
+      .result .ok { color: var(--ok); font-weight: 500; }
+      .spinner {
+        display: inline-block;
+        width: 14px; height: 14px;
+        border: 2px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .hidden { display: none !important; }
+      .errlist { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 id="title"></h1>
+      <p class="intro" id="intro"></p>
+
+      <div class="error hidden" id="error"></div>
+
+      <section id="content" class="hidden">
+        <dl>
+          <dt id="lbl-signedin"></dt>
+          <dd><span id="email"></span></dd>
+          <dt id="lbl-target"></dt>
+          <dd id="target"></dd>
+          <dt id="lbl-scope"></dt>
+          <dd id="scope"></dd>
+        </dl>
+        <p class="hint" id="accountHint"></p>
+
+        <div class="notice" id="notice">
+          <div id="nothingMoves"></div>
+          <div class="role" id="roleNote"></div>
+        </div>
+
+        <div class="row">
+          <button id="countBtn" type="button"></button>
+          <span class="status" id="countResult"></span>
+        </div>
+
+        <div id="offerArea" class="hidden" style="margin-top: 20px;">
+          <label class="check">
+            <input type="checkbox" id="understand" />
+            <span id="understandText"></span>
+          </label>
+          <div class="row">
+            <button id="offerBtn" type="button" class="primary" disabled></button>
+          </div>
+        </div>
+
+        <div id="progressArea" class="hidden">
+          <div class="progress"><div id="bar"></div></div>
+          <p class="status" id="progressText"></p>
+        </div>
+
+        <div id="resultArea" class="hidden result">
+          <p class="ok" id="resultSummary"></p>
+          <p class="status" id="doneNote"></p>
+          <ul class="errlist hidden" id="errlist"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      var STRINGS = <?!= stringsJson ?>;
+      var LANG = <?!= JSON.stringify(lang) ?>;
+
+      function tr(key, subs) {
+        var s = STRINGS[key] || key;
+        if (subs) {
+          Object.keys(subs).forEach(function (k) {
+            s = s.split('{' + k + '}').join(String(subs[k]));
+          });
+        }
+        return s;
+      }
+      function $(id) { return document.getElementById(id); }
+      function setText(id, text) { var el = $(id); if (el) el.textContent = text; }
+      function run(name, args) {
+        return new Promise(function (resolve, reject) {
+          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name].apply(null, args || []);
+        });
+      }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+      function showError(msg) {
+        var el = $('error');
+        el.textContent = tr('errorGeneric', { msg: msg });
+        show(el);
+      }
+      function showRawError(msg) {
+        var el = $('error');
+        el.textContent = msg;
+        show(el);
+      }
+
+      function boot() {
+        document.title = tr('appTitle');
+        setText('title', tr('appTitle'));
+        setText('intro', tr('intro'));
+        setText('lbl-signedin', tr('signedIn'));
+        setText('lbl-target', tr('target'));
+        setText('lbl-scope', tr('scope'));
+        setText('accountHint', tr('accountHint'));
+        setText('nothingMoves', tr('nothingMoves'));
+        setText('roleNote', tr('roleNote'));
+        setText('countBtn', tr('countButton'));
+        setText('understandText', tr('understand'));
+        setText('offerBtn', tr('offerButton'));
+        setText('doneNote', tr('doneNote'));
+
+        run('getContext', []).then(function (ctx) {
+          setText('email', ctx.email || '');
+          var targetText = ctx.target || '\u2014';
+          setText('target', targetText);
+          if (ctx.targetError) {
+            showError(ctx.targetError);
+          }
+          setText('scope', tr('scopeOrgFolders'));
+          show($('content'));
+          if (ctx.selfTarget) {
+            showRawError(tr('errorSelfTarget'));
+            $('countBtn').disabled = true;
+            hide($('offerArea'));
+          }
+        }).catch(function (e) {
+          showError((e && e.message) || String(e));
+          show($('content'));
+        });
+
+        $('understand').addEventListener('change', function () {
+          $('offerBtn').disabled = !this.checked;
+        });
+        $('countBtn').addEventListener('click', onCount);
+        $('offerBtn').addEventListener('click', onOffer);
+      }
+
+      function onCount() {
+        var btn = $('countBtn');
+        btn.disabled = true;
+        setText('countResult', tr('counting'));
+        run('countOwned', []).then(function (res) {
+          setText('countResult', tr('countLabel', { n: res.count }));
+          show($('offerArea'));
+        }).catch(function (e) {
+          setText('countResult', '');
+          showError((e && e.message) || String(e));
+        }).finally(function () {
+          btn.disabled = false;
+        });
+      }
+
+      function onOffer() {
+        if (!$('understand').checked) { showError(tr('needCheck')); return; }
+        hide($('error'));
+        hide($('resultArea'));
+        $('countBtn').disabled = true;
+        $('offerBtn').disabled = true;
+        show($('progressArea'));
+        setText('progressText', tr('offering'));
+
+        run('startOffer', []).then(step).catch(fail);
+      }
+
+      function step(res) {
+        var total = res.total || 0;
+        var processed = res.processed || 0;
+        var pct = total ? Math.round((processed / total) * 100) : 100;
+        $('bar').style.width = pct + '%';
+        setText('progressText', tr('progress', {
+          processed: processed, total: total,
+          offered: res.offered, skipped: res.skipped, errors: res.errors
+        }));
+        if (res.done) { finish(res); return; }
+        run('continueOffer', [res.token]).then(step).catch(fail);
+      }
+
+      function finish(res) {
+        hide($('progressArea'));
+        setText('resultSummary', tr('resultSummary', {
+          offered: res.offered, skipped: res.skipped, errors: res.errors
+        }));
+        if (res.errorList && res.errorList.length) {
+          var ul = $('errlist');
+          ul.innerHTML = '';
+          res.errorList.slice(0, 20).forEach(function (it) {
+            var li = document.createElement('li');
+            li.textContent = (it.name || it.id) + ': ' + it.message;
+            ul.appendChild(li);
+          });
+          show(ul);
+        }
+        show($('resultArea'));
+      }
+
+      function fail(e) {
+        hide($('progressArea'));
+        $('countBtn').disabled = false;
+        $('offerBtn').disabled = false;
+        showError((e && e.message) || String(e));
+      }
+
+      boot();
+    </script>
+  </body>
+</html>

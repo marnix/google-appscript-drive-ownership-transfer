@@ -1,0 +1,81 @@
+# ===== GitHub-official cross-language core =====
+
+# Dependencies
+node_modules/
+
+# Build output
+bin/
+dist/
+build/
+
+# Go (github/gitignore Go.gitignore)
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+coverage.*
+vendor/
+go.work
+go.work.sum
+
+# Node (github/gitignore Node.gitignore)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ===== Secrets / credentials / local config =====
+
+credentials.json
+token.json
+
+# clasp / Google Apps Script
+.clasprc.json
+.clasp.json
+
+# Keys and certificates (a catch-all for anything copied into the repo)
+*.pem
+*.key
+*.crt
+
+# ===== Generated data =====
+
+# Offer/CSV logs and exports
+*.csv
+
+# Logs
+*.log
+
+# ===== OS junk (github/gitignore Global) =====
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+.directory
+
+# ===== Editors / IDEs =====
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+*.code-workspace
