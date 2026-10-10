@@ -10,7 +10,7 @@
  */
 
 var ORG_EMAIL_KEY = 'ORG_EMAIL';
-var RUN_BUDGET_MS = 4.5 * 60 * 1000;
+var CHUNK_BUDGET_MS = 30 * 1000;
 var MAX_STATE_BYTES = 400000;
 var FOLDER_MIME = 'application/vnd.google-apps.folder';
 
@@ -76,158 +76,161 @@ function isOwnedByMe_(file) {
   return false;
 }
 
-function toItem_(file) {
-  return { id: file.id, name: file.name, mimeType: file.mimeType };
-}
-
-/**
- * IDs of every folder OWNED by the org account that the caller can see.
- * These are the roots we walk to find leaver-owned items placed in the org's
- * folder structure (directly or in a nested subfolder).
+/** Resumable scan of the org's folder tree.
+ *
+ * Walks every folder owned by the org that the caller can see, in chunks, so
+ * a large tree cannot exceed the 6-minute execution cap. Records the
+ * transferable items (everything the caller owns inside those folders,
+ * directly or nested) plus the folder tree for preview. When the scan is
+ * done, the item list stays in the job state and is handed to startOffer() —
+ * the walk happens only once.
  */
-function listOrgFolderIds_(target) {
-  var ids = [];
+function startScan() {
+  var target = getTargetEmail_();
+  assertNotSelfTarget_(target);
+  var token = Utilities.getUuid();
+  var state = {
+    phase: 'scan',
+    target: target,
+    roots: [],
+    folders: {},
+    queue: [],
+    items: [],
+    scanned: 0
+  };
   var pageToken = null;
-  do {
-    var res = Drive.Files.list({
-      q: "'" + target + "' in owners and mimeType = '" + FOLDER_MIME + "' and trashed = false",
-      fields: 'nextPageToken, files(id)',
-      pageSize: 1000,
-      pageToken: pageToken
-    });
-    (res.files || []).forEach(function (f) { ids.push(f.id); });
-    pageToken = res.nextPageToken;
-  } while (pageToken);
-  return ids;
-}
-
-/**
- * Collect every item the caller owns that sits inside a folder owned by the
- * organization (directly or in any nested subfolder). Personal items that are
- * not under an org-owned folder are ignored.
- */
-function collectOwnedItems_() {
-  var target = getTargetEmail_();
-  var items = [];
-  var seen = {};
-  var queue = listOrgFolderIds_(target);
-
-  while (queue.length) {
-    var parentId = queue.shift();
-    if (seen[parentId]) continue;
-    seen[parentId] = true;
-    var token = null;
-    do {
-      var r = Drive.Files.list({
-        q: "'" + parentId + "' in parents and trashed = false",
-        fields: 'nextPageToken, files(id, name, mimeType, owners)',
-        pageSize: 1000,
-        pageToken: token
-      });
-      (r.files || []).forEach(function (f) {
-        if (isOwnedByMe_(f)) items.push(toItem_(f));
-        if (f.mimeType === FOLDER_MIME) queue.push(f.id);
-      });
-      token = r.nextPageToken;
-    } while (token);
-  }
-  return items;
-}
-
-/**
- * Display tree of what a transfer would cover: one root per folder owned by
- * the org that contains at least one item the caller owns. Branches without
- * to-be-transferred items are pruned. Each node:
- *   { id, name, mimeType, owned, transfers, children }
- * where `owned` = the caller owns the node and `transfers` = number of owned
- * items in the node's subtree (including the node itself, so a leaf file shows
- * 1).
- */
-function collectTree_() {
-  var target = getTargetEmail_();
-  var roots = [];
-  var queue = [];
-  var nodesById = {};
-  var seen = {};
-
-  function folderNode(f) {
-    var node = nodesById[f.id];
-    if (!node) {
-      node = { id: f.id, name: f.name, mimeType: FOLDER_MIME, owned: false, transfers: 0, children: [] };
-      nodesById[f.id] = node;
-    }
-    return node;
-  }
-
-  function hasChild_(node, childId) {
-    for (var i = 0; i < node.children.length; i++) {
-      if (node.children[i].id === childId) return true;
-    }
-    return false;
-  }
-
-  var token = null;
   do {
     var res = Drive.Files.list({
       q: "'" + target + "' in owners and mimeType = '" + FOLDER_MIME + "' and trashed = false",
       fields: 'nextPageToken, files(id, name)',
       pageSize: 1000,
-      pageToken: token
+      pageToken: pageToken
     });
     (res.files || []).forEach(function (f) {
-      var node = folderNode(f);
-      roots.push(node);
-      queue.push({ folderId: f.id, node: node });
+      state.folders[f.id] = { n: f.name, o: false, f: 0, s: [], v: false };
+      state.roots.push(f.id);
+      state.queue.push(f.id);
     });
-    token = res.nextPageToken;
-  } while (token);
+    pageToken = res.nextPageToken;
+  } while (pageToken);
+  saveState_(token, state);
+  return runScan_(token);
+}
 
-  while (queue.length) {
-    var cur = queue.shift();
-    if (seen[cur.folderId]) continue;
-    seen[cur.folderId] = true;
-    var pageToken = null;
-    do {
-      var r = Drive.Files.list({
-        q: "'" + cur.folderId + "' in parents and trashed = false",
-        fields: 'nextPageToken, files(id, name, mimeType, owners)',
-        pageSize: 1000,
-        pageToken: pageToken
-      });
-      (r.files || []).forEach(function (f) {
-        var owned = isOwnedByMe_(f);
-        if (f.mimeType === FOLDER_MIME) {
-          var node = folderNode(f);
-          // A folder shared under several roots/owners is a single node object,
-          // so the nested copy always carries the populated subtree.
-          if (owned) node.owned = true;
-          if (!hasChild_(cur.node, f.id)) cur.node.children.push(node);
-          queue.push({ folderId: f.id, node: node });
-        } else {
-          cur.node.children.push({
-            id: f.id,
-            name: f.name,
-            mimeType: f.mimeType,
-            owned: owned,
-            transfers: owned ? 1 : 0,
-            children: []
-          });
-        }
-      });
-      pageToken = r.nextPageToken;
-    } while (pageToken);
+function continueScan(token) {
+  return runScan_(token);
+}
+
+function runScan_(token) {
+  var start = Date.now();
+  var state = getState_(token);
+  if (!state || state.phase !== 'scan') throw new Error('Unknown or expired scan.');
+  while (state.queue.length && (Date.now() - start) < CHUNK_BUDGET_MS) {
+    scanFolder_(state);
+    state.scanned++;
   }
+  if (state.queue.length === 0) {
+    var assembled = assembleTreeFrom_(state);
+    state.items = dedupeItems_(state.items);
+    state.phase = 'scanned';
+    delete state.folders;
+    delete state.roots;
+    delete state.queue;
+    delete state.scanned;
+    saveState_(token, state);
+    return {
+      done: true,
+      token: token,
+      count: assembled.count,
+      found: state.items.length,
+      trees: assembled.trees
+    };
+  }
+  saveState_(token, state);
+  return {
+    done: false,
+    token: token,
+    found: state.items.length,
+    scanned: state.scanned,
+    pending: state.queue.length
+  };
+}
 
+function scanFolder_(state) {
+  var fid = state.queue.shift();
+  var f = state.folders[fid];
+  if (!f || f.v) return;
+  f.v = true;
+  var pageToken = null;
+  do {
+    var r = Drive.Files.list({
+      q: "'" + fid + "' in parents and trashed = false",
+      fields: 'nextPageToken, files(id, name, mimeType, owners)',
+      pageSize: 1000,
+      pageToken: pageToken
+    });
+    (r.files || []).forEach(function (ch) {
+      var owned = isOwnedByMe_(ch);
+      if (ch.mimeType === FOLDER_MIME) {
+        var other = state.folders[ch.id];
+        if (!other) {
+          other = { n: ch.name, o: owned, f: 0, s: [], v: false };
+          state.folders[ch.id] = other;
+          state.queue.push(ch.id);
+        } else if (owned) {
+          other.o = true;
+        }
+        f.s.push(ch.id);
+      }
+      if (owned) {
+        state.items.push({ id: ch.id, name: ch.name, mimeType: ch.mimeType });
+        if (ch.mimeType !== FOLDER_MIME) f.f++;
+      }
+    });
+    pageToken = r.nextPageToken;
+  } while (pageToken);
+}
+
+function assembleTreeFrom_(state) {
+  var nodesById = {};
+  function make(id) {
+    if (nodesById[id]) return nodesById[id];
+    var f = state.folders[id];
+    var node = { id: id, name: f.n, mimeType: FOLDER_MIME, owned: !!f.o, files: f.f || 0, transfers: 0, children: [] };
+    nodesById[id] = node;
+    var seen = {};
+    (f.s || []).forEach(function (cid) {
+      if (!state.folders[cid] || seen[cid]) return;
+      seen[cid] = true;
+      node.children.push(make(cid));
+    });
+    return node;
+  }
+  var roots = [];
+  for (var i = 0; i < state.roots.length; i++) roots.push(make(state.roots[i]));
   var pruned = [];
-  for (var i = 0; i < roots.length; i++) {
-    var root = finalizeTree_(roots[i]);
+  var count = 0;
+  for (var j = 0; j < roots.length; j++) {
+    var root = finalizeTree_(roots[j]);
+    count += root.transfers;
     if (root.transfers > 0) pruned.push(root);
   }
-  return dedupeRoots_(pruned);
+  return { count: count, trees: dedupeRoots_(pruned) };
+}
+
+function dedupeItems_(items) {
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < items.length; i++) {
+    if (seen[items[i].id]) continue;
+    seen[items[i].id] = true;
+    out.push(items[i]);
+  }
+  return out;
 }
 
 function finalizeTree_(node) {
-  var total = node.transfers;
+  var total = (node.owned ? 1 : 0) + (node.files || 0);
   var children = [];
   for (var i = 0; i < node.children.length; i++) {
     var child = finalizeTree_(node.children[i]);
@@ -394,28 +397,22 @@ function assertNotSelfTarget_(target) {
   }
 }
 
-function getPreview() {
-  var trees = collectTree_();
-  var count = 0;
-  for (var i = 0; i < trees.length; i++) count += trees[i].transfers;
-  return { count: count, trees: trees };
-}
-
-function startOffer() {
-  var target = getTargetEmail_();
-  assertNotSelfTarget_(target);
-  var items = collectOwnedItems_();
-  var token = Utilities.getUuid();
-  var state = {
-    target: target,
-    items: items,
+function startOffer(token) {
+  var state = getState_(token);
+  if (!state || state.phase !== 'scanned') {
+    throw new Error(t_('noScan'));
+  }
+  assertNotSelfTarget_(state.target);
+  var next = {
+    target: state.target,
+    items: state.items,
     index: 0,
     offered: 0,
     skipped: 0,
     errors: 0,
     errorList: []
   };
-  saveState_(token, state);
+  saveState_(token, next);
   return runState_(token);
 }
 
@@ -427,7 +424,7 @@ function runState_(token) {
   var start = Date.now();
   var state = getState_(token);
   if (!state) throw new Error('Unknown or expired job.');
-  while (state.index < state.items.length && (Date.now() - start) < RUN_BUDGET_MS) {
+  while (state.index < state.items.length && (Date.now() - start) < CHUNK_BUDGET_MS) {
     var item = state.items[state.index];
     try {
       var result = offerOne_(item, state.target);

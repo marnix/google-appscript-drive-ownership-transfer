@@ -37,7 +37,8 @@ var I18N = {
     errorGeneric: 'Er is iets misgegaan: {msg}',
     errorTitle: 'Fout',
     reload: 'Opnieuw',
-    scanning: 'Bezig met scannen\u2026',
+    scanning: 'Bezig met scannen\u2026 {found} gevonden, {scanned} mappen doorzocht, {pending} nog te doorzoeken',
+    noScan: 'Scan de objecten eerst via \u2018Aantal objecten bepalen\u2019.',
     tooMany: 'Te veel objecten voor \u00e9\u00e9n opdracht; de taak is te groot.'
   },
   en: {
@@ -70,7 +71,8 @@ var I18N = {
     errorGeneric: 'Something went wrong: {msg}',
     errorTitle: 'Error',
     reload: 'Reload',
-    scanning: 'Scanning\u2026',
+    scanning: 'Scanning\u2026 {found} found, {scanned} folders searched, {pending} to go',
+    noScan: 'Scan the objects first via \u2018Count objects\u2019.',
     tooMany: 'Too many objects for a single job; the task is too large.'
   }
 };

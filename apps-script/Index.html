@@ -114,7 +114,7 @@
       .preview .file::before { content: '\2022 '; color: var(--muted); }
       .preview .owned { font-weight: 600; }
       .preview .n { color: var(--muted); font-weight: 400; }
-      .preview .file-summary { color: var(--muted); }
+      .preview .file-summary { color: var(--muted); font-weight: 600; }
     </style>
   </head>
   <body>
@@ -176,6 +176,7 @@
     <script>
       var STRINGS = <?!= stringsJson ?>;
       var LANG = <?!= JSON.stringify(lang) ?>;
+      var scanToken = null;
 
       function tr(key, subs) {
         var s = STRINGS[key] || key;
@@ -251,19 +252,32 @@
       function onCount() {
         var btn = $('countBtn');
         btn.disabled = true;
-        setText('countResult', tr('counting'));
-        run('getPreview', []).then(function (res) {
+        hide($('previewArea'));
+        hide($('offerArea'));
+        setText('countResult', tr('scanning', { found: 0, scanned: 0, pending: 0 }));
+        run('startScan', []).then(scanStep).catch(scanFail);
+      }
+
+      function scanStep(res) {
+        if (res.done) {
+          scanToken = res.token;
           setText('countResult', tr('countLabel', { n: res.count }));
           renderTree(res.trees);
           show($('previewArea'));
           show($('offerArea'));
-        }).catch(function (e) {
-          setText('countResult', '');
-          hide($('previewArea'));
-          showError((e && e.message) || String(e));
-        }).finally(function () {
-          btn.disabled = false;
-        });
+          $('countBtn').disabled = false;
+          return;
+        }
+        setText('countResult', tr('scanning', {
+          found: res.found, scanned: res.scanned, pending: res.pending
+        }));
+        run('continueScan', [res.token]).then(scanStep).catch(scanFail);
+      }
+
+      function scanFail(e) {
+        $('countBtn').disabled = false;
+        setText('countResult', '');
+        showError((e && e.message) || String(e));
       }
 
       function renderTree(trees) {
@@ -283,21 +297,16 @@
         n.textContent = ' (' + node.transfers + ')';
         li.appendChild(n);
 
-        var fileCount = 0;
         var ul = null;
         node.children.forEach(function (c) {
-          if (c.mimeType === 'application/vnd.google-apps.folder') {
-            if (!ul) ul = document.createElement('ul');
-            renderFolder(c, ul);
-          } else {
-            fileCount++;
-          }
+          if (!ul) ul = document.createElement('ul');
+          renderFolder(c, ul);
         });
-        if (fileCount > 0) {
+        if (node.files > 0) {
           if (!ul) ul = document.createElement('ul');
           var fli = document.createElement('li');
           fli.className = 'file-summary';
-          fli.textContent = tr('filesSummary', { n: fileCount });
+          fli.textContent = tr('filesSummary', { n: node.files });
           ul.appendChild(fli);
         }
         if (ul) li.appendChild(ul);
@@ -306,6 +315,7 @@
 
       function onOffer() {
         if (!$('understand').checked) { showError(tr('needCheck')); return; }
+        if (!scanToken) { showError(tr('noScan')); return; }
         hide($('error'));
         hide($('resultArea'));
         $('countBtn').disabled = true;
@@ -313,7 +323,7 @@
         show($('progressArea'));
         setText('progressText', tr('offering'));
 
-        run('startOffer', []).then(step).catch(fail);
+        run('startOffer', [scanToken]).then(step).catch(fail);
       }
 
       function step(res) {
