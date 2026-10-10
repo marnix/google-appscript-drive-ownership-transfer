@@ -98,6 +98,22 @@
       @keyframes spin { to { transform: rotate(360deg); } }
       .hidden { display: none !important; }
       .errlist { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+      .preview {
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        max-height: 300px;
+        overflow: auto;
+        font-size: 13px;
+      }
+      .preview ul { margin: 2px 0; padding-left: 18px; }
+      .preview > ul { padding-left: 0; }
+      .preview li { list-style: none; margin: 2px 0; }
+      .preview .folder::before { content: '\25B8 '; color: var(--muted); }
+      .preview .file::before { content: '\2022 '; color: var(--muted); }
+      .preview .owned { font-weight: 600; }
+      .preview .n { color: var(--muted); font-weight: 400; }
     </style>
   </head>
   <body>
@@ -126,6 +142,11 @@
         <div class="row">
           <button id="countBtn" type="button"></button>
           <span class="status" id="countResult"></span>
+        </div>
+
+        <div id="previewArea" class="hidden">
+          <p class="hint" id="previewTitle" style="margin-top: 14px;"></p>
+          <div class="preview"><ul id="tree"></ul></div>
         </div>
 
         <div id="offerArea" class="hidden" style="margin-top: 20px;">
@@ -195,6 +216,7 @@
         setText('nothingMoves', tr('nothingMoves'));
         setText('roleNote', tr('roleNote'));
         setText('countBtn', tr('countButton'));
+        setText('previewTitle', tr('previewTitle'));
         setText('understandText', tr('understand'));
         setText('offerBtn', tr('offerButton'));
         setText('doneNote', tr('doneNote'));
@@ -229,15 +251,43 @@
         var btn = $('countBtn');
         btn.disabled = true;
         setText('countResult', tr('counting'));
-        run('countOwned', []).then(function (res) {
+        run('getPreview', []).then(function (res) {
           setText('countResult', tr('countLabel', { n: res.count }));
+          renderTree(res.trees);
+          show($('previewArea'));
           show($('offerArea'));
         }).catch(function (e) {
           setText('countResult', '');
+          hide($('previewArea'));
           showError((e && e.message) || String(e));
         }).finally(function () {
           btn.disabled = false;
         });
+      }
+
+      function renderTree(trees) {
+        var root = $('tree');
+        root.innerHTML = '';
+        trees.forEach(function (node) { renderNode(node, root); });
+      }
+
+      function renderNode(node, parentUl) {
+        var li = document.createElement('li');
+        li.className = (node.mimeType === 'application/vnd.google-apps.folder') ? 'folder' : 'file';
+        if (node.owned) li.className += ' owned';
+        var name = document.createElement('span');
+        name.textContent = node.name || node.id;
+        li.appendChild(name);
+        if (node.children.length) {
+          var n = document.createElement('span');
+          n.className = 'n';
+          n.textContent = ' (' + node.transfers + ')';
+          li.appendChild(n);
+          var ul = document.createElement('ul');
+          node.children.forEach(function (c) { renderNode(c, ul); });
+          li.appendChild(ul);
+        }
+        parentUl.appendChild(li);
       }
 
       function onOffer() {

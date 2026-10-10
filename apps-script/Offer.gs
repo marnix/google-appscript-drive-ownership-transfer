@@ -135,6 +135,88 @@ function collectOwnedItems_() {
 }
 
 /**
+ * Display tree of what a transfer would cover: one root per folder owned by
+ * the org that contains at least one item the caller owns. Branches without
+ * to-be-transferred items are pruned. Each node:
+ *   { id, name, mimeType, owned, transfers, children }
+ * where `owned` = the caller owns the node and `transfers` = number of owned
+ * items in the node's subtree (including the node itself, so a leaf file shows
+ * 1).
+ */
+function collectTree_() {
+  var target = getTargetEmail_();
+  var roots = [];
+  var queue = [];
+  var token = null;
+  do {
+    var res = Drive.Files.list({
+      q: "'" + target + "' in owners and mimeType = '" + FOLDER_MIME + "' and trashed = false",
+      fields: 'nextPageToken, files(id, name)',
+      pageSize: 1000,
+      pageToken: token
+    });
+    (res.files || []).forEach(function (f) {
+      var node = { id: f.id, name: f.name, mimeType: FOLDER_MIME, owned: false, transfers: 0, children: [] };
+      roots.push(node);
+      queue.push({ folderId: f.id, node: node });
+    });
+    token = res.nextPageToken;
+  } while (token);
+
+  var seen = {};
+  while (queue.length) {
+    var cur = queue.shift();
+    if (seen[cur.folderId]) continue;
+    seen[cur.folderId] = true;
+    var pageToken = null;
+    do {
+      var r = Drive.Files.list({
+        q: "'" + cur.folderId + "' in parents and trashed = false",
+        fields: 'nextPageToken, files(id, name, mimeType, owners)',
+        pageSize: 1000,
+        pageToken: pageToken
+      });
+      (r.files || []).forEach(function (f) {
+        var owned = isOwnedByMe_(f);
+        var node = {
+          id: f.id,
+          name: f.name,
+          mimeType: f.mimeType,
+          owned: owned,
+          transfers: owned ? 1 : 0,
+          children: []
+        };
+        cur.node.children.push(node);
+        if (f.mimeType === FOLDER_MIME) {
+          queue.push({ folderId: f.id, node: node });
+        }
+      });
+      pageToken = r.nextPageToken;
+    } while (pageToken);
+  }
+
+  var pruned = [];
+  for (var i = 0; i < roots.length; i++) {
+    var root = finalizeTree_(roots[i]);
+    if (root.transfers > 0) pruned.push(root);
+  }
+  return pruned;
+}
+
+function finalizeTree_(node) {
+  var total = node.transfers;
+  var children = [];
+  for (var i = 0; i < node.children.length; i++) {
+    var child = finalizeTree_(node.children[i]);
+    total += child.transfers;
+    if (child.transfers > 0) children.push(child);
+  }
+  node.transfers = total;
+  node.children = children;
+  return node;
+}
+
+/**
  * Offer one item. Returns 'offered' or 'skipped'.
  *
  * Drive API v3 cannot set pendingOwner in the same call that first grants the
@@ -262,8 +344,11 @@ function assertNotSelfTarget_(target) {
   }
 }
 
-function countOwned() {
-  return { count: collectOwnedItems_().length };
+function getPreview() {
+  var trees = collectTree_();
+  var count = 0;
+  for (var i = 0; i < trees.length; i++) count += trees[i].transfers;
+  return { count: count, trees: trees };
 }
 
 function startOffer() {
