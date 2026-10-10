@@ -74,6 +74,8 @@
         margin: 16px 0 8px;
       }
       .progress > div { height: 100%; width: 0; background: var(--primary); transition: width 0.2s; }
+      .progress > div.busy { width: 40%; animation: busy 1.2s ease-in-out infinite; }
+      @keyframes busy { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
       .status { color: var(--muted); font-size: 13px; }
       .error {
         background: var(--err-bg);
@@ -256,8 +258,8 @@
         hide($('offerArea'));
         hide($('error'));
         show($('progressArea'));
-        $('bar').className = '';
-        $('bar').style.width = '0%';
+        $('bar').className = 'busy';
+        $('bar').style.width = '';
         setText('progressText', tr('scanning', { found: 0, scanned: 0, pending: 0, skip: 0 }));
         run('startScan', []).then(scanStep).catch(scanFail);
       }
@@ -278,7 +280,13 @@
         var scanned = res.scanned || 0;
         var pending = res.pending || 0;
         var known = scanned + pending;
-        $('bar').style.width = (known > 0 ? Math.round((scanned / known) * 100) : 0) + '%';
+        if (known > 0) {
+          $('bar').className = '';
+          $('bar').style.width = Math.round((scanned / known) * 100) + '%';
+        } else {
+          $('bar').className = 'busy';
+          $('bar').style.width = '';
+        }
         setText('progressText', tr('scanning', {
           found: res.found || 0, scanned: scanned,
           pending: pending, skip: res.skip || 0

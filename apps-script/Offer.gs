@@ -10,7 +10,7 @@
  */
 
 var ORG_EMAIL_KEY = 'ORG_EMAIL';
-var CHUNK_BUDGET_MS = 30 * 1000;
+var CHUNK_BUDGET_MS = 15 * 1000;
 var YIELD_REMAIN = 8;
 var MAX_STATE_BYTES = 400000;
 var FOLDER_MIME = 'application/vnd.google-apps.folder';
