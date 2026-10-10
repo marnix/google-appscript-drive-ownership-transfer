@@ -20,7 +20,7 @@ var I18N = {
     roleNote: 'Na acceptatie wordt uw rol \u2018bewerker\u2019.',
     countButton: 'Aantal objecten bepalen',
     counting: 'Bezig met tellen\u2026',
-    countLabel: 'Objecten die u bezit: {n}',
+    countLabel: 'Over te dragen objecten: {n}',
     previewTitle: 'Mappen en bestanden die worden aangeboden, met aantal over te dragen objecten:',
     filesSummary: '{n} bestand(en)',
     understand: 'Ik begrijp dat er voor elk object afzonderlijk een eigendomsoverdracht wordt aangeboden.',
@@ -37,7 +37,7 @@ var I18N = {
     errorGeneric: 'Er is iets misgegaan: {msg}',
     errorTitle: 'Fout',
     reload: 'Opnieuw',
-    scanning: 'Bezig met scannen\u2026 {found} gevonden, {scanned} mappen doorzocht, {pending} nog te doorzoeken',
+    scanning: 'Bezig met scannen\u2026 {found} gevonden, {scanned} mappen doorzocht, {pending} nog te doorzoeken, {skip} al aangeboden',
     noScan: 'Scan de objecten eerst via \u2018Aantal objecten bepalen\u2019.',
     tooMany: 'Te veel objecten voor \u00e9\u00e9n opdracht; de taak is te groot.'
   },
@@ -54,7 +54,7 @@ var I18N = {
     roleNote: 'After acceptance your role becomes \u2018editor\u2019.',
     countButton: 'Count objects',
     counting: 'Counting\u2026',
-    countLabel: 'Objects you own: {n}',
+    countLabel: 'Objects to hand over: {n}',
     previewTitle: 'Folders and files that will be offered, with the number of items per folder:',
     filesSummary: '{n} file(s)',
     understand: 'I understand that a separate ownership transfer is offered for every object.',
@@ -71,7 +71,7 @@ var I18N = {
     errorGeneric: 'Something went wrong: {msg}',
     errorTitle: 'Error',
     reload: 'Reload',
-    scanning: 'Scanning\u2026 {found} found, {scanned} folders searched, {pending} to go',
+    scanning: 'Scanning\u2026 {found} found, {scanned} folders searched, {pending} to go, {skip} already offered',
     noScan: 'Scan the objects first via \u2018Count objects\u2019.',
     tooMany: 'Too many objects for a single job; the task is too large.'
   }

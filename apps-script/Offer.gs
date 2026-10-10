@@ -10,7 +10,8 @@
  */
 
 var ORG_EMAIL_KEY = 'ORG_EMAIL';
-var CHUNK_BUDGET_MS = 5 * 1000;
+var CHUNK_BUDGET_MS = 30 * 1000;
+var YIELD_REMAIN = 8;
 var MAX_STATE_BYTES = 400000;
 var FOLDER_MIME = 'application/vnd.google-apps.folder';
 
@@ -96,7 +97,9 @@ function startScan() {
     folders: {},
     queue: [],
     items: [],
-    scanned: 0
+    scanned: 0,
+    checkedMap: {},
+    skipCount: 0
   };
   var pageToken = null;
   do {
@@ -107,7 +110,7 @@ function startScan() {
       pageToken: pageToken
     });
     (res.files || []).forEach(function (f) {
-      state.folders[f.id] = { n: f.name, o: false, f: 0, s: [], v: false };
+      state.folders[f.id] = { n: f.name, s: [], v: false };
       state.roots.push(f.id);
       state.queue.push(f.id);
     });
@@ -125,42 +128,55 @@ function runScan_(token) {
   var start = Date.now();
   var state = getState_(token);
   if (!state || state.phase !== 'scan') throw new Error('Unknown or expired scan.');
-  while (state.queue.length && (Date.now() - start) < CHUNK_BUDGET_MS) {
+  while (state.queue.length) {
+    if (state.queue.length >= YIELD_REMAIN && (Date.now() - start) >= CHUNK_BUDGET_MS) break;
     scanFolder_(state);
     state.scanned++;
   }
   if (state.queue.length === 0) {
-    var assembled = assembleTreeFrom_(state);
     state.items = dedupeItems_(state.items);
+    var assembled = assembleTreeFrom_(state);
+    var skip = state.skipCount;
     state.phase = 'scanned';
     delete state.folders;
     delete state.roots;
     delete state.queue;
     delete state.scanned;
+    delete state.checkedMap;
+    delete state.skipCount;
     saveState_(token, state);
     return {
       done: true,
       token: token,
       count: assembled.count,
-      found: state.items.length,
+      found: assembled.count,
+      skip: skip,
       trees: assembled.trees
     };
   }
   saveState_(token, state);
   return {
     done: false,
+    phase: 'scan',
     token: token,
     found: state.items.length,
     scanned: state.scanned,
-    pending: state.queue.length
+    pending: state.queue.length,
+    skip: state.skipCount
   };
 }
 
+/**
+ * One pass: walk one folder and record every item the caller owns that is not
+ * yet pending or owned by the target. Each owned item needs a permissions.list
+ * call, so the correct count and the offer job are built during the walk.
+ */
 function scanFolder_(state) {
   var fid = state.queue.shift();
   var f = state.folders[fid];
   if (!f || f.v) return;
   f.v = true;
+  var targetLc = state.target.toLowerCase();
   var pageToken = null;
   do {
     var r = Drive.Files.list({
@@ -170,21 +186,33 @@ function scanFolder_(state) {
       pageToken: pageToken
     });
     (r.files || []).forEach(function (ch) {
-      var owned = isOwnedByMe_(ch);
       if (ch.mimeType === FOLDER_MIME) {
+        if (!f.s) f.s = [];
         var other = state.folders[ch.id];
         if (!other) {
-          other = { n: ch.name, o: owned, f: 0, s: [], v: false };
+          other = { n: ch.name, s: [], v: false };
           state.folders[ch.id] = other;
           state.queue.push(ch.id);
-        } else if (owned) {
-          other.o = true;
         }
         f.s.push(ch.id);
       }
-      if (owned) {
+      if (isOwnedByMe_(ch) && !state.checkedMap[ch.id]) {
+        state.checkedMap[ch.id] = true;
+        var existing = null;
+        try {
+          existing = findTargetPermission_(ch.id, targetLc);
+        } catch (e) {
+          existing = null;
+        }
+        if (existing && (existing.role === 'owner' || existing.pendingOwner)) {
+          state.skipCount++;
+          return;
+        }
         state.items.push({ id: ch.id, name: ch.name, mimeType: ch.mimeType });
-        if (ch.mimeType !== FOLDER_MIME) f.f++;
+        if (ch.mimeType !== FOLDER_MIME) {
+          if (!f.f) f.f = [];
+          f.f.push(ch.id);
+        }
       }
     });
     pageToken = r.nextPageToken;
@@ -192,11 +220,14 @@ function scanFolder_(state) {
 }
 
 function assembleTreeFrom_(state) {
+  var keep = {};
+  for (var i = 0; i < state.items.length; i++) keep[state.items[i].id] = true;
   var nodesById = {};
   function make(id) {
     if (nodesById[id]) return nodesById[id];
     var f = state.folders[id];
-    var node = { id: id, name: f.n, mimeType: FOLDER_MIME, owned: !!f.o, files: f.f || 0, transfers: 0, children: [] };
+    var node = { id: id, name: f.n, mimeType: FOLDER_MIME, owned: !!keep[id], files: 0, transfers: 0, children: [] };
+    (f.f || []).forEach(function (fid) { if (keep[fid]) node.files++; });
     nodesById[id] = node;
     var seen = {};
     (f.s || []).forEach(function (cid) {
@@ -424,7 +455,10 @@ function runState_(token) {
   var start = Date.now();
   var state = getState_(token);
   if (!state) throw new Error('Unknown or expired job.');
-  while (state.index < state.items.length && (Date.now() - start) < CHUNK_BUDGET_MS) {
+  while (state.index < state.items.length) {
+    if (state.index > 0 &&
+        (state.items.length - state.index) >= YIELD_REMAIN &&
+        (Date.now() - start) >= CHUNK_BUDGET_MS) break;
     var item = state.items[state.index];
     try {
       var result = offerOne_(item, state.target);
