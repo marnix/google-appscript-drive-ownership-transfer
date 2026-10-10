@@ -147,6 +147,25 @@ function collectTree_() {
   var target = getTargetEmail_();
   var roots = [];
   var queue = [];
+  var nodesById = {};
+  var seen = {};
+
+  function folderNode(f) {
+    var node = nodesById[f.id];
+    if (!node) {
+      node = { id: f.id, name: f.name, mimeType: FOLDER_MIME, owned: false, transfers: 0, children: [] };
+      nodesById[f.id] = node;
+    }
+    return node;
+  }
+
+  function hasChild_(node, childId) {
+    for (var i = 0; i < node.children.length; i++) {
+      if (node.children[i].id === childId) return true;
+    }
+    return false;
+  }
+
   var token = null;
   do {
     var res = Drive.Files.list({
@@ -156,14 +175,13 @@ function collectTree_() {
       pageToken: token
     });
     (res.files || []).forEach(function (f) {
-      var node = { id: f.id, name: f.name, mimeType: FOLDER_MIME, owned: false, transfers: 0, children: [] };
+      var node = folderNode(f);
       roots.push(node);
       queue.push({ folderId: f.id, node: node });
     });
     token = res.nextPageToken;
   } while (token);
 
-  var seen = {};
   while (queue.length) {
     var cur = queue.shift();
     if (seen[cur.folderId]) continue;
@@ -178,17 +196,22 @@ function collectTree_() {
       });
       (r.files || []).forEach(function (f) {
         var owned = isOwnedByMe_(f);
-        var node = {
-          id: f.id,
-          name: f.name,
-          mimeType: f.mimeType,
-          owned: owned,
-          transfers: owned ? 1 : 0,
-          children: []
-        };
-        cur.node.children.push(node);
         if (f.mimeType === FOLDER_MIME) {
+          var node = folderNode(f);
+          // A folder shared under several roots/owners is a single node object,
+          // so the nested copy always carries the populated subtree.
+          if (owned) node.owned = true;
+          if (!hasChild_(cur.node, f.id)) cur.node.children.push(node);
           queue.push({ folderId: f.id, node: node });
+        } else {
+          cur.node.children.push({
+            id: f.id,
+            name: f.name,
+            mimeType: f.mimeType,
+            owned: owned,
+            transfers: owned ? 1 : 0,
+            children: []
+          });
         }
       });
       pageToken = r.nextPageToken;
