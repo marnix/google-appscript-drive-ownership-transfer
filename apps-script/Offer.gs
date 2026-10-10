@@ -200,7 +200,7 @@ function collectTree_() {
     var root = finalizeTree_(roots[i]);
     if (root.transfers > 0) pruned.push(root);
   }
-  return pruned;
+  return dedupeRoots_(pruned);
 }
 
 function finalizeTree_(node) {
@@ -214,6 +214,33 @@ function finalizeTree_(node) {
   node.transfers = total;
   node.children = children;
   return node;
+}
+
+/**
+ * The seed query lists every folder owned by the org at any depth, so an
+ * org-owned subfolder of another org-owned folder would otherwise appear both
+ * as a top-level root and nested. Keep only roots that are not a descendant of
+ * another root.
+ */
+function dedupeRoots_(roots) {
+  var kept = [];
+  for (var i = 0; i < roots.length; i++) {
+    var duplicate = false;
+    for (var j = 0; j < roots.length; j++) {
+      if (i === j) continue;
+      if (containsId_(roots[j], roots[i].id)) { duplicate = true; break; }
+    }
+    if (!duplicate) kept.push(roots[i]);
+  }
+  return kept;
+}
+
+function containsId_(node, id) {
+  if (node.id === id) return true;
+  for (var i = 0; i < node.children.length; i++) {
+    if (containsId_(node.children[i], id)) return true;
+  }
+  return false;
 }
 
 /**

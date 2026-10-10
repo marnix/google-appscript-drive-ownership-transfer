@@ -114,6 +114,7 @@
       .preview .file::before { content: '\2022 '; color: var(--muted); }
       .preview .owned { font-weight: 600; }
       .preview .n { color: var(--muted); font-weight: 400; }
+      .preview .file-summary { color: var(--muted); }
     </style>
   </head>
   <body>
@@ -268,25 +269,38 @@
       function renderTree(trees) {
         var root = $('tree');
         root.innerHTML = '';
-        trees.forEach(function (node) { renderNode(node, root); });
+        trees.forEach(function (node) { renderFolder(node, root); });
       }
 
-      function renderNode(node, parentUl) {
+      function renderFolder(node, parentUl) {
         var li = document.createElement('li');
-        li.className = (node.mimeType === 'application/vnd.google-apps.folder') ? 'folder' : 'file';
-        if (node.owned) li.className += ' owned';
+        li.className = 'folder' + (node.owned ? ' owned' : '');
         var name = document.createElement('span');
         name.textContent = node.name || node.id;
         li.appendChild(name);
-        if (node.children.length) {
-          var n = document.createElement('span');
-          n.className = 'n';
-          n.textContent = ' (' + node.transfers + ')';
-          li.appendChild(n);
-          var ul = document.createElement('ul');
-          node.children.forEach(function (c) { renderNode(c, ul); });
-          li.appendChild(ul);
+        var n = document.createElement('span');
+        n.className = 'n';
+        n.textContent = ' (' + node.transfers + ')';
+        li.appendChild(n);
+
+        var fileCount = 0;
+        var ul = null;
+        node.children.forEach(function (c) {
+          if (c.mimeType === 'application/vnd.google-apps.folder') {
+            if (!ul) ul = document.createElement('ul');
+            renderFolder(c, ul);
+          } else {
+            fileCount++;
+          }
+        });
+        if (fileCount > 0) {
+          if (!ul) ul = document.createElement('ul');
+          var fli = document.createElement('li');
+          fli.className = 'file-summary';
+          fli.textContent = tr('filesSummary', { n: fileCount });
+          ul.appendChild(fli);
         }
+        if (ul) li.appendChild(ul);
         parentUl.appendChild(li);
       }
 
