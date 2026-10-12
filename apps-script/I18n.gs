@@ -38,6 +38,7 @@ var I18N = {
     errorTitle: 'Fout',
     reload: 'Opnieuw',
     scanning: 'Bezig met scannen\u2026 {found} gevonden, {scanned} mappen doorzocht, {pending} nog te doorzoeken, {skip} al aangeboden',
+    scanningAccept: 'Bezig met zoeken\u2026 {checked} gecontroleerd, {found} met aanbieding, {bytes}',
     noScan: 'Scan de objecten eerst via \u2018Aantal objecten bepalen\u2019.',
     tooMany: 'Te veel objecten voor \u00e9\u00e9n opdracht; de taak is te groot.',
     // Accept mode
@@ -82,6 +83,7 @@ var I18N = {
     errorTitle: 'Error',
     reload: 'Reload',
     scanning: 'Scanning\u2026 {found} found, {scanned} folders searched, {pending} to go, {skip} already offered',
+    scanningAccept: 'Searching\u2026 {checked} checked, {found} with offer, {bytes}',
     noScan: 'Scan the objects first via \u2018Count objects\u2019.',
     tooMany: 'Too many objects for a single job; the task is too large.',
     // Accept mode
