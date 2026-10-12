@@ -179,6 +179,7 @@
       var STRINGS = <?!= stringsJson ?>;
       var LANG = <?!= JSON.stringify(lang) ?>;
       var scanToken = null;
+      var appMode = "offer";
 
       function tr(key, subs) {
         var s = STRINGS[key] || key;
@@ -234,6 +235,7 @@
           }
           setText('scope', tr('scopeOrgFolders'));
           show($('content'));
+          appMode = ctx.mode || "offer";
           if (ctx.mode === 'accept') {
             document.title = tr('appTitleAccept');
             setText('title', tr('appTitleAccept'));
@@ -273,8 +275,13 @@
         show($('progressArea'));
         $('bar').className = 'busy';
         $('bar').style.width = '';
-        setText('progressText', tr('scanning', { found: 0, scanned: 0, pending: 0, skip: 0 }));
-        run('startScan', []).then(scanStep).catch(scanFail);
+        if (appMode === 'accept') {
+          setText('progressText', tr('scanningAccept', { checked: 0, found: 0, bytes: '0 B' }));
+          run('startAcceptScan', []).then(scanStepAccept).catch(scanFail);
+        } else {
+          setText('progressText', tr('scanning', { found: 0, scanned: 0, pending: 0, skip: 0 }));
+          run('startScan', []).then(scanStep).catch(scanFail);
+        }
       }
 
       function scanStep(res) {
@@ -305,6 +312,28 @@
           pending: pending, skip: res.skip || 0
         }));
         run('continueScan', [res.token]).then(scanStep).catch(scanFail);
+      }
+
+
+      function scanStepAccept(res) {
+        if (res.done) {
+          scanToken = res.token;
+          hide($('progressArea'));
+          setText('countResult', tr('countLabelAccept', { n: res.count }));
+          $('countBtn').disabled = false;
+          if (res.count > 0) {
+            renderTree(res.trees);
+            show($('previewArea'));
+            show($('offerArea'));
+          }
+          return;
+        }
+        $('bar').className = 'busy';
+        $('bar').style.width = '';
+        setText('progressText', tr('scanningAccept', {
+          checked: res.checked || 0, found: res.found || 0, bytes: res.bytesFormatted || '0 B'
+        }));
+        run('continueAcceptScan', [res.token]).then(scanStepAccept).catch(scanFail);
       }
 
       function scanFail(e) {
