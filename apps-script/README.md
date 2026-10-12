@@ -2,7 +2,7 @@
 
 Primary implementation. A departing person opens a link, authorizes once, and
 the script (running as them) marks every Drive item they own in a scope as
-**offered for ownership** to the org account. The org accepts later (phase 2).
+**offered for ownership** to the org account. An accept flow for the org account is planned.
 
 See the repo `README.md` for the full design.
 

@@ -7,7 +7,7 @@ Google Accounts registered with other addresses). The org account is also a
 consumer account. Files are **not moved**; they stay where they are and only
 gain a pending-ownership offer.
 
-Status: initial implementation. Not yet exercised against live credentials.
+Status: offer phase deployed and validated live. See apps-script/README.md for current state and deployment info.
 
 ## Mechanism (Drive API v3, consumer -> consumer)
 
