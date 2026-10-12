@@ -493,7 +493,6 @@ function runState_(token) {
 
 function startAcceptScan() {
   var target = getTargetEmail_();
-  assertNotSelfTarget_(target);
   var token = Utilities.getUuid();
   var state = {
     phase: 'accept',
