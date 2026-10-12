@@ -332,7 +332,7 @@
         var checked = res.bytesChecked || 0;
         if (total > 0 && checked > 0 && checked < total * 2) { // sanity check
           $('bar').className = '';
-          var pct = Math.min(100, Math.round((checked / total) * 100));
+          var pct = Math.min(95, Math.round((checked / total) * 100));
           $('bar').style.width = pct + '%';
         } else {
           $('bar').className = 'busy';
