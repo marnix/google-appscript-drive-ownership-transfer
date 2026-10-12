@@ -249,15 +249,13 @@ function assembleTreeFrom_(state) {
   return { count: count, trees: dedupeRoots_(pruned) };
 }
 
-function dedupeItems_(items) {
-  var seen = {};
-  var out = [];
-  for (var i = 0; i < items.length; i++) {
-    if (seen[items[i].id]) continue;
-    seen[items[i].id] = true;
-    out.push(items[i]);
-  }
-  return out;
+function fmtBytes_(b) {
+  if (!b || b <= 0) return '0 B';
+  var units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  var i = Math.floor(Math.log(b) / Math.log(1024));
+  if (i < 0) i = 0;
+  if (i > units.length - 1) i = units.length - 1;
+  return (b / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
 }
 
 function finalizeTree_(node) {
@@ -489,4 +487,149 @@ function runState_(token) {
     errors: state.errors,
     errorList: state.errorList
   };
+}
+
+/* ---- Accept mode (scan pending offers to org) ---- */
+
+function startAcceptScan() {
+  var target = getTargetEmail_();
+  assertNotSelfTarget_(target);
+  var token = Utilities.getUuid();
+  var state = {
+    phase: 'accept',
+    target: target,
+    pageToken: null,
+    items: [],
+    bytesChecked: 0,
+    bytesFound: 0,
+    checked: 0
+  };
+  saveState_(token, state);
+  return runAcceptScan_(token);
+}
+
+function continueAcceptScan(token) {
+  return runAcceptScan_(token);
+}
+
+function runAcceptScan_(token) {
+  var start = Date.now();
+  var state = getState_(token);
+  if (!state || state.phase !== 'accept') throw new Error('Unknown or expired scan.');
+  while (true) {
+    if (state.pageToken === null && state.checked > 0) break;
+    if (Date.now() - start >= CHUNK_BUDGET_MS) break;
+    scanAcceptPage_(state);
+  }
+  if (state.pageToken === null && state.checked >= 0) {
+    var flat = state.items;
+    var treeRes = buildAcceptTree_(flat);
+    state.phase = 'acceptScanned';
+    state.items = flat;
+    saveState_(token, state);
+    return {
+      done: true,
+      mode: 'accept',
+      token: token,
+      count: flat.length,
+      bytesFound: state.bytesFound,
+      bytesFormatted: fmtBytes_(state.bytesFound),
+      trees: treeRes.trees
+    };
+  }
+  saveState_(token, state);
+  return {
+    done: false,
+    mode: 'accept',
+    token: token,
+    checked: state.checked,
+    found: state.items.length,
+    bytesChecked: state.bytesChecked,
+    bytesFound: state.bytesFound,
+    bytesFormatted: fmtBytes_(state.bytesFound)
+  };
+}
+
+function scanAcceptPage_(state) {
+  var targetLc = state.target.toLowerCase();
+  var res = Drive.Files.list({
+    q: 'trashed=false',
+    fields: 'nextPageToken,files(id,name,mimeType,size,owners,permissions,parents)',
+    pageSize: 1000,
+    pageToken: state.pageToken
+  });
+  var files = res.files || [];
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    state.checked++;
+    state.bytesChecked += Number(f.size || 0);
+    var perms = f.permissions || [];
+    for (var j = 0; j < perms.length; j++) {
+      var p = perms[j];
+      if (String(p.emailAddress || '').toLowerCase() === targetLc) {
+        if (p.pendingOwner && !(p.role === 'owner')) {
+          state.items.push({
+            id: f.id,
+            name: f.name,
+            mimeType: f.mimeType,
+            size: Number(f.size || 0),
+            parents: f.parents || []
+          });
+          state.bytesFound += Number(f.size || 0);
+        }
+        break;
+      }
+    }
+  }
+  state.pageToken = res.nextPageToken || null;
+}
+
+function buildAcceptTree_(items) {
+  if (!items.length) return { trees: [] };
+  var folderMap = {};
+  var folderIds = {};
+  for (var i = 0; i < items.length; i++) {
+    var parents = items[i].parents || [];
+    for (var k = 0; k < parents.length; k++) folderIds[parents[k]] = true;
+  }
+  var ids = Object.keys(folderIds);
+  for (var x = 0; x < ids.length; x += 100) {
+    var chunk = ids.slice(x, Math.min(x + 100, ids.length));
+    for (var c = 0; c < chunk.length; c++) {
+      try {
+        var meta = Drive.Files.get(chunk[c], { fields: 'id,name,mimeType' });
+        folderMap[meta.id] = { id: meta.id, name: meta.name, mimeType: meta.mimeType };
+      } catch (e) {}
+    }
+  }
+  var nodesById = {};
+  function getNode(id) {
+    if (nodesById[id]) return nodesById[id];
+    var m = folderMap[id] || { id: id, name: id };
+    var n = { id: m.id, name: m.name, mimeType: m.mimeType || FOLDER_MIME, files: 0, transfers: 0, children: [], owned: false };
+    nodesById[id] = n;
+    return n;
+  }
+  for (var it = 0; it < items.length; it++) {
+    var im = items[it];
+    var ps = im.parents || [];
+    if (ps.length === 0) {
+      // orphans? treat as virtual root later? skip tree grouping for now
+    } else {
+      var pid = ps[0];
+      var pnode = getNode(pid);
+      pnode.files++;
+    }
+  }
+  var roots = [];
+  for (var rid in nodesById) {
+    if (nodesById.hasOwnProperty(rid)) roots.push(nodesById[rid]);
+  }
+  var pruned = [];
+  var count = items.length;
+  for (var r = 0; r < roots.length; r++) {
+    var rt = finalizeTree_(roots[r]);
+    if (rt.transfers > 0) pruned.push(rt);
+  }
+  return { trees: pruned.length ? pruned : [], count: count };
 }
