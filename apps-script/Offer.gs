@@ -553,7 +553,7 @@ function runAcceptScan_(token) {
 function scanAcceptPage_(state) {
   var targetLc = state.target.toLowerCase();
   var res = Drive.Files.list({
-    q: 'trashed=false',
+    q: "trashed=false and not 'me' in owners",
     fields: 'nextPageToken,files(id,name,mimeType,size,owners,permissions,parents)',
     pageSize: 1000,
     pageToken: state.pageToken
