@@ -257,8 +257,15 @@ function fmtBytes_(b) {
   if (i > units.length - 1) i = units.length - 1;
   var v = b / Math.pow(1024, i);
   var lang = currentLang_();
-  var s = (i === 0 ? v.toFixed(0) : v.toFixed(1));
-  if (lang === 'nl') s = s.replace('.', ',');
+  var s;
+  try {
+    var loc = (lang === 'nl') ? 'nl-NL' : 'en-US';
+    var opts = { minimumFractionDigits: (i === 0 ? 0 : 1), maximumFractionDigits: (i === 0 ? 0 : 1) };
+    s = new Intl.NumberFormat(loc, opts).format(v);
+  } catch (e) {
+    s = (i === 0 ? v.toFixed(0) : v.toFixed(1));
+    if (lang === 'nl') s = s.replace('.', ',');
+  }
   return s + ' ' + units[i];
 }
 
