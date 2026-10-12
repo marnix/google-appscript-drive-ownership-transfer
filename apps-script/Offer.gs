@@ -255,7 +255,11 @@ function fmtBytes_(b) {
   var i = Math.floor(Math.log(b) / Math.log(1024));
   if (i < 0) i = 0;
   if (i > units.length - 1) i = units.length - 1;
-  return (b / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+  var v = b / Math.pow(1024, i);
+  var lang = currentLang_();
+  var s = (i === 0 ? v.toFixed(0) : v.toFixed(1));
+  if (lang === 'nl') s = s.replace('.', ',');
+  return s + ' ' + units[i];
 }
 
 function finalizeTree_(node) {
