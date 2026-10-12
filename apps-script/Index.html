@@ -234,10 +234,23 @@
           }
           setText('scope', tr('scopeOrgFolders'));
           show($('content'));
-          if (ctx.selfTarget) {
-            showRawError(tr('errorSelfTarget'));
-            $('countBtn').disabled = true;
-            hide($('offerArea'));
+          if (ctx.mode === 'accept') {
+            document.title = tr('appTitleAccept');
+            setText('title', tr('appTitleAccept'));
+            setText('intro', tr('introAccept'));
+            setText('countBtn', tr('countButtonAccept'));
+            setText('previewTitle', tr('previewTitleAccept'));
+            setText('understandText', tr('understandAccept'));
+            setText('offerBtn', tr('offerButtonAccept'));
+            setText('doneNote', tr('doneNoteAccept'));
+            hide($('nothingMoves'));
+            hide($('roleNote'));
+          } else {
+            if (ctx.selfTarget) {
+              showRawError(tr('errorSelfTarget'));
+              $('countBtn').disabled = true;
+              hide($('offerArea'));
+            }
           }
         }).catch(function (e) {
           showError((e && e.message) || String(e));

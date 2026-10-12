@@ -416,7 +416,9 @@ function getContext() {
     email: email,
     target: target,
     targetError: targetError,
-    selfTarget: selfTarget
+    selfTarget: selfTarget,
+    mode: selfTarget ? 'accept' : 'offer',
+    isOrg: selfTarget
   };
 }
 

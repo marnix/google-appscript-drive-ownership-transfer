@@ -39,7 +39,17 @@ var I18N = {
     reload: 'Opnieuw',
     scanning: 'Bezig met scannen\u2026 {found} gevonden, {scanned} mappen doorzocht, {pending} nog te doorzoeken, {skip} al aangeboden',
     noScan: 'Scan de objecten eerst via \u2018Aantal objecten bepalen\u2019.',
-    tooMany: 'Te veel objecten voor \u00e9\u00e9n opdracht; de taak is te groot.'
+    tooMany: 'Te veel objecten voor \u00e9\u00e9n opdracht; de taak is te groot.',
+    // Accept mode
+    appTitleAccept: 'Eigendom accepteren (Google Drive)',
+    introAccept: 'Als organisatieaccount kunt u hier eigendomsoverdrachten accepteren die aan u zijn aangeboden.',
+    countButtonAccept: 'Inkomende aanbiedingen zoeken',
+    countLabelAccept: 'Aanbiedingen aan u: {n}',
+    previewTitleAccept: 'Bestanden/mappen met een aanbieding aan u:',
+    offerButtonAccept: 'Eigendom accepteren',
+    understandAccept: 'Ik begrijp dat de bestanden na acceptatie eigendom van het organisatieaccount worden.',
+    resultSummaryAccept: '{accepted} geaccepteerd \u00b7 {skipped} overgeslagen \u00b7 {errors} fouten',
+    doneNoteAccept: 'Acceptatie is voltooid.'
   },
   en: {
     appTitle: 'Drive ownership transfer',
@@ -73,7 +83,17 @@ var I18N = {
     reload: 'Reload',
     scanning: 'Scanning\u2026 {found} found, {scanned} folders searched, {pending} to go, {skip} already offered',
     noScan: 'Scan the objects first via \u2018Count objects\u2019.',
-    tooMany: 'Too many objects for a single job; the task is too large.'
+    tooMany: 'Too many objects for a single job; the task is too large.',
+    // Accept mode
+    appTitleAccept: 'Accept ownership (Google Drive)',
+    introAccept: 'As the organization account, you can accept pending ownership transfers offered to you.',
+    countButtonAccept: 'Find incoming offers',
+    countLabelAccept: 'Offers to you: {n}',
+    previewTitleAccept: 'Files/folders with a pending offer to you:',
+    offerButtonAccept: 'Accept ownership',
+    understandAccept: 'I understand that after acceptance these items become owned by the organization account.',
+    resultSummaryAccept: '{accepted} accepted \u00b7 {skipped} skipped \u00b7 {errors} errors',
+    doneNoteAccept: 'Acceptance completed.'
   }
 };
 
