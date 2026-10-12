@@ -505,6 +505,13 @@ function runState_(token) {
 function startAcceptScan() {
   var target = getTargetEmail_();
   var token = Utilities.getUuid();
+  var totalBytes = 0;
+  try {
+    var about = Drive.About.get({ fields: 'storageQuota' });
+    totalBytes = Number(about.storageQuota && about.storageQuota.usageInDrive) || 0;
+  } catch (e) {
+    totalBytes = 0;
+  }
   var state = {
     phase: 'accept',
     target: target,
@@ -512,7 +519,8 @@ function startAcceptScan() {
     items: [],
     bytesChecked: 0,
     bytesFound: 0,
-    checked: 0
+    checked: 0,
+    totalBytes: totalBytes
   };
   saveState_(token, state);
   return runAcceptScan_(token);
@@ -543,9 +551,10 @@ function runAcceptScan_(token) {
       token: token,
       count: flat.length,
       bytesFound: state.bytesFound,
-      bytesFormatted: fmtBytes_(state.bytesFound),
-      trees: treeRes.trees
-    };
+    bytesFormatted: fmtBytes_(state.bytesFound),
+    totalBytes: state.totalBytes,
+    trees: treeRes.trees
+  };
   }
   saveState_(token, state);
   return {
@@ -556,7 +565,8 @@ function runAcceptScan_(token) {
     found: state.items.length,
     bytesChecked: state.bytesChecked,
     bytesFound: state.bytesFound,
-    bytesFormatted: fmtBytes_(state.bytesFound)
+    bytesFormatted: fmtBytes_(state.bytesFound),
+    totalBytes: state.totalBytes
   };
 }
 
