@@ -641,9 +641,73 @@ function buildAcceptTree_(items) {
       pnode.files++;
     }
   }
+  // Expand up to ancestors to build full hierarchy
+  var expanded = true;
+  var guard = 0;
+  while (expanded && guard < 20) {
+    expanded = false;
+    guard++;
+    var currentIds = Object.keys(nodesById);
+    for (var ni = 0; ni < currentIds.length; ni++) {
+      try {
+        var fidNode = currentIds[ni];
+        if (folderMap[fidNode] && folderMap[fidNode]._expanded) continue;
+        var fmeta = Drive.Files.get(fidNode, { fields: 'id,name,mimeType,parents' });
+        if (!folderMap[fmeta.id]) {
+          folderMap[fmeta.id] = { id: fmeta.id, name: fmeta.name, mimeType: fmeta.mimeType };
+        } else {
+          folderMap[fmeta.id].name = fmeta.name;
+          folderMap[fmeta.id].mimeType = fmeta.mimeType;
+        }
+        folderMap[fmeta.id]._expanded = true;
+        var pids = fmeta.parents || [];
+        if (pids.length > 0) {
+          var p = pids[0];
+          if (!nodesById[p]) {
+            var pm = folderMap[p];
+            if (!pm) {
+              try {
+                var pmeta = Drive.Files.get(p, { fields: 'id,name,mimeType' });
+                pm = { id: pmeta.id, name: pmeta.name, mimeType: pmeta.mimeType };
+                folderMap[p] = pm;
+              } catch (e) {
+                pm = { id: p, name: p };
+                folderMap[p] = pm;
+              }
+            }
+            nodesById[p] = { id: pm.id, name: pm.name, mimeType: pm.mimeType || FOLDER_MIME, files: 0, transfers: 0, children: [], owned: false };
+            expanded = true;
+          }
+          var child = nodesById[fidNode];
+          var parentNode = nodesById[p];
+          var has = false;
+          for (var hc = 0; hc < parentNode.children.length; hc++) {
+            if (parentNode.children[hc].id === child.id) { has = true; break; }
+          }
+          if (!has) {
+            parentNode.children.push(child);
+            expanded = true;
+          }
+        }
+      } catch (e) {}
+    }
+  }
   var roots = [];
   for (var rid in nodesById) {
-    if (nodesById.hasOwnProperty(rid)) roots.push(nodesById[rid]);
+    if (nodesById.hasOwnProperty(rid)) {
+      var rn = nodesById[rid];
+      var isRoot = true;
+      for (var pid2 in nodesById) {
+        if (nodesById.hasOwnProperty(pid2)) {
+          var pn2 = nodesById[pid2];
+          for (var cc = 0; cc < pn2.children.length; cc++) {
+            if (pn2.children[cc].id === rn.id) { isRoot = false; break; }
+          }
+          if (!isRoot) break;
+        }
+      }
+      if (isRoot) roots.push(rn);
+    }
   }
   var pruned = [];
   var count = items.length;
