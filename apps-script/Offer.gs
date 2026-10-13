@@ -627,15 +627,18 @@ function buildAcceptTree_(items) {
   function getNode(id) {
     if (nodesById[id]) return nodesById[id];
     var m = folderMap[id] || { id: id, name: id };
+    if (id === ORPHAN_ID) m = { id: ORPHAN_ID, name: 'Unorganized' };
     var n = { id: m.id, name: m.name, mimeType: m.mimeType || FOLDER_MIME, files: 0, transfers: 0, children: [], owned: false };
     nodesById[id] = n;
     return n;
   }
+  var ORPHAN_ID = '__orphans__';
   for (var it = 0; it < items.length; it++) {
     var im = items[it];
     var ps = im.parents || [];
     if (ps.length === 0) {
-      // orphans? treat as virtual root later? skip tree grouping for now
+      var op = getNode(ORPHAN_ID);
+      op.files++;
     } else {
       var pid = ps[0];
       var pnode = getNode(pid);
