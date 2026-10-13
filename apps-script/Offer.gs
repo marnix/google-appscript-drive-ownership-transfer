@@ -500,6 +500,80 @@ function runState_(token) {
   };
 }
 
+/* ---- Accept execution (transfer ownership for pending offers) ---- */
+
+function startAccept(token) {
+  var state = getState_(token);
+  if (!state || state.phase !== 'acceptScanned') {
+    throw new Error(t_('noScan'));
+  }
+  var next = {
+    phase: 'accepting',
+    target: state.target,
+    items: state.items,
+    index: 0,
+    accepted: 0,
+    skipped: 0,
+    errors: 0,
+    errorList: []
+  };
+  saveState_(token, next);
+  return runAcceptState_(token);
+}
+
+function continueAccept(token) {
+  return runAcceptState_(token);
+}
+
+function runAcceptState_(token) {
+  var start = Date.now();
+  var state = getState_(token);
+  if (!state || state.phase !== 'accepting') throw new Error('Unknown or expired job.');
+  var targetLc = state.target.toLowerCase();
+  while (state.index < state.items.length) {
+    if (state.index > 0 &&
+        (state.items.length - state.index) >= YIELD_REMAIN &&
+        (Date.now() - start) >= CHUNK_BUDGET_MS) break;
+    var item = state.items[state.index];
+    try {
+      var perms = Drive.Permissions.list(item.id, { fields: 'permissions(id,emailAddress,role,pendingOwner)' }).permissions || [];
+      var permId = null;
+      for (var p = 0; p < perms.length; p++) {
+        if (String(perms[p].emailAddress || '').toLowerCase() === targetLc && perms[p].pendingOwner) {
+          permId = perms[p].id; break;
+        }
+      }
+      if (!permId) {
+        state.skipped++; state.index++; continue;
+      }
+      Drive.Permissions.update({ role: 'owner', pendingOwner: false }, item.id, permId, { transferOwnership: true });
+      state.accepted++;
+    } catch (e) {
+      state.errors++;
+      if (state.errorList.length < 50) {
+        state.errorList.push({ id: item.id, name: item.name, message: String((e && e.message) || e) });
+      }
+    }
+    state.index++;
+  }
+  var done = state.index >= state.items.length;
+  if (done) {
+    deleteState_(token);
+  } else {
+    saveState_(token, state);
+  }
+  return {
+    done: done,
+    token: done ? null : token,
+    total: state.items.length,
+    processed: state.index,
+    accepted: state.accepted,
+    skipped: state.skipped,
+    errors: state.errors,
+    errorList: state.errorList
+  };
+}
+
 /* ---- Accept mode (scan pending offers to org) ---- */
 
 function startAcceptScan() {
