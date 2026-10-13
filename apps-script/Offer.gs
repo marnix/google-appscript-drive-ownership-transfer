@@ -553,6 +553,30 @@ function runAcceptState_(token) {
         state.skipped++; state.index++; continue;
       }
       Drive.Permissions.update({ role: 'owner', pendingOwner: false }, item.id, permId, { transferOwnership: true });
+      try {
+        var origSet = {};
+        var owners = item.owners || [];
+        for (var o = 0; o < owners.length; o++) {
+          var oe = String(owners[o].emailAddress || '').toLowerCase();
+          if (oe && oe !== targetLc) origSet[oe] = true;
+        }
+        var allPerms = Drive.Permissions.list(item.id, { fields: 'permissions(id,emailAddress,role,permissionDetails)' }).permissions || [];
+        for (var ap = 0; ap < allPerms.length; ap++) {
+          var pp = allPerms[ap];
+          var isInherited = false;
+          if (pp.permissionDetails) {
+            for (var pd = 0; pd < pp.permissionDetails.length; pd++) {
+              if (pp.permissionDetails[pd].inherited) { isInherited = true; break; }
+            }
+          }
+          if (isInherited) continue;
+          var pe = String(pp.emailAddress || '').toLowerCase();
+          if (!pe) continue;
+          if (origSet[pe]) {
+            try { Drive.Permissions.remove(item.id, pp.id); } catch (e2) {}
+          }
+        }
+      } catch (e3) {}
       state.accepted++;
     } catch (e) {
       state.errors++;
@@ -674,7 +698,8 @@ function scanAcceptPage_(state) {
             name: f.name,
             mimeType: f.mimeType,
             size: Number(f.size || 0),
-            parents: f.parents || []
+            parents: f.parents || [],
+            owners: f.owners || []
           });
           state.bytesFound += Number(f.size || 0);
         }
