@@ -245,8 +245,23 @@
             setText('understandText', tr('understandAccept'));
             setText('offerBtn', tr('offerButtonAccept'));
             setText('doneNote', tr('doneNoteAccept'));
-            hide($('nothingMoves'));
-            hide($('roleNote'));
+            if (I18N && I18N[navigator.language && navigator.language.slice(0,2)] && I18N[navigator.language.slice(0,2)].accountHintAccept) {
+              setText('accountHint', tr('accountHintAccept'));
+            } else if (I18N && I18N.en && I18N.en.accountHintAccept) {
+              setText('accountHint', I18N.en.accountHintAccept);
+            } else {
+              setText('accountHint', tr('accountHintAccept'));
+            }
+            if (I18N && I18N[navigator.language && navigator.language.slice(0,2)] && I18N[navigator.language.slice(0,2)].noticeAccept) {
+              setText('nothingMoves', tr('noticeAccept'));
+              hide($('roleNote'));
+            } else if (I18N && I18N.en && I18N.en.noticeAccept) {
+              setText('nothingMoves', I18N.en.noticeAccept);
+              hide($('roleNote'));
+            } else {
+              hide($('nothingMoves'));
+              hide($('roleNote'));
+            }
           } else {
             if (ctx.selfTarget) {
               showRawError(tr('errorSelfTarget'));
