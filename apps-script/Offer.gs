@@ -301,13 +301,19 @@ function dedupeRoots_(roots) {
   return kept;
 }
 
-function containsId_(node, id) {
-  if (node.id === id) return true;
-  for (var i = 0; i < node.children.length; i++) {
-    if (containsId_(node.children[i], id)) return true;
+function dedupeItems_(items) {
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < items.length; i++) {
+    var id = items[i].id;
+    if (!seen[id]) {
+      seen[id] = true;
+      out.push(items[i]);
+    }
   }
-  return false;
+  return out;
 }
+
 
 /**
  * Offer one item. Returns 'offered' or 'skipped'.
