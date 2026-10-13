@@ -246,7 +246,8 @@
             setText('offerBtn', tr('offerButtonAccept'));
             setText('doneNote', tr('doneNoteAccept'));
             setText('accountHint', tr('accountHintAccept'));
-            hide($('nothingMoves'));
+            setText('nothingMoves', tr('noticeAccept'));
+            show($('notice'));
             hide($('roleNote'));
           } else {
             if (ctx.selfTarget) {
