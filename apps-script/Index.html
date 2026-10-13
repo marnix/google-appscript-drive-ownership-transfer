@@ -136,6 +136,7 @@
           <dd id="scope"></dd>
         </dl>
         <p class="hint" id="accountHint"></p>
+        <p class="hint hidden" id="accountHintHidden" aria-hidden="true"></p>
 
         <div class="notice" id="notice">
           <div id="nothingMoves"></div>
@@ -218,8 +219,7 @@
         setText('lbl-target', tr('target'));
         setText('lbl-scope', tr('scope'));
         setText('accountHint', tr('accountHint'));
-        setText('nothingMoves', tr('nothingMoves'));
-        setText('roleNote', tr('roleNote'));
+        hide($('accountHint'));
         setText('countBtn', tr('countButton'));
         setText('previewTitle', tr('previewTitle'));
         setText('understandText', tr('understand'));
@@ -246,15 +246,19 @@
             setText('offerBtn', tr('offerButtonAccept'));
             setText('doneNote', tr('doneNoteAccept'));
             setText('accountHint', tr('accountHintAccept'));
+            show($('accountHint'));
             setText('nothingMoves', tr('noticeAccept'));
             show($('notice'));
             hide($('roleNote'));
           } else {
+            hide($('accountHint'));
             if (ctx.selfTarget) {
               showRawError(tr('errorSelfTarget'));
               $('countBtn').disabled = true;
               hide($('offerArea'));
             }
+            hide($('roleNote'));
+          }
             hide($('roleNote'));
           }
         }).catch(function (e) {
