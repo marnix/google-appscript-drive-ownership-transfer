@@ -246,7 +246,7 @@
             setText('offerBtn', tr('offerButtonAccept'));
             setText('doneNote', tr('doneNoteAccept'));
             setText('accountHint', tr('accountHintAccept'));
-            setText('nothingMoves', tr('noticeAccept'));
+            hide($('nothingMoves'));
             hide($('roleNote'));
           } else {
             if (ctx.selfTarget) {
@@ -254,6 +254,7 @@
               $('countBtn').disabled = true;
               hide($('offerArea'));
             }
+            hide($('roleNote'));
           }
         }).catch(function (e) {
           showError((e && e.message) || String(e));
