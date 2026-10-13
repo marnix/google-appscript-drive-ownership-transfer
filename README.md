@@ -1,19 +1,21 @@
 # Drive ownership transfer
 
-Help departing people mark the Google Drive documents they own as "offered for
-ownership" to an org account, so the org can accept the transfer later in bulk.
-All accounts involved are **consumer Google accounts** (some `@gmail.com`, some
-Google Accounts registered with other addresses). The org account is also a
-consumer account. Files are **not moved**; they stay where they are and only
-gain a pending-ownership offer.
+Help people hand over ownership of Google Drive documents they own to an org
+account. This can be used when someone is leaving the organization, but also by
+current users who want the organization to take ownership (pay for storage and
+control access). All accounts involved are **consumer Google accounts** (some
+`@gmail.com`, some Google Accounts registered with other addresses). The org
+account is also a consumer account. Files are **not moved**; they stay where they
+are and only gain a pending-ownership offer.
 
-Status: offer phase deployed and validated live. See apps-script/README.md for current state and deployment info.
+Status: offer phase deployed and validated live. See apps-script/README.md for
+current state and deployment info.
 
 ## Mechanism (Drive API v3, consumer -> consumer)
 
 Confirmed in https://developers.google.com/workspace/drive/api/guides/transfer-file
 
-1. **Offer** (leaver side). The current owner creates/updates the prospective
+1. **Offer** (current owner side). The current owner creates/updates the prospective
    owner's permission with `role=writer`, `type=user`, `pendingOwner=true`.
    This sends the prospective owner an email and marks the permission with
    `pendingOwner=true`. Nothing moves.

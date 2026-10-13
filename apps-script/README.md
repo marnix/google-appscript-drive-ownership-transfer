@@ -1,8 +1,10 @@
 # Drive ownership transfer — Apps Script web app
 
-Primary implementation. A departing person opens a link, authorizes once, and
-the script (running as them) marks every Drive item they own in a scope as
-**offered for ownership** to the org account. An accept flow for the org account is planned.
+Primary implementation. Anyone who owns files (departing or current) can open
+the link, authorize once, and the script (running as them) marks every Drive
+item they own in the scoped folders as **offered for ownership** to the org
+account. The org account can use the same URL in accept mode to accept pending
+offers later in bulk.
 
 See the repo `README.md` for the full design.
 
