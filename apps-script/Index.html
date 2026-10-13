@@ -390,7 +390,11 @@
         $('bar').style.width = '0%';
         setText('progressText', tr('offering'));
 
-        run('startOffer', [scanToken]).then(step).catch(fail);
+        if (appMode === 'accept') {
+          run('startAccept', [scanToken]).then(stepAccept).catch(fail);
+        } else {
+          run('startOffer', [scanToken]).then(step).catch(fail);
+        }
       }
 
       function step(res) {
@@ -404,6 +408,36 @@
         }));
         if (res.done) { finish(res); return; }
         run('continueOffer', [res.token]).then(step).catch(fail);
+      }
+
+      function stepAccept(res) {
+        var total = res.total || 0;
+        var processed = res.processed || 0;
+        var pct = total ? Math.round((processed / total) * 100) : 100;
+        $('bar').style.width = pct + '%';
+        setText('progressText', tr('progress', {
+          processed: processed, total: total,
+          offered: res.accepted || res.offered || 0, skipped: res.skipped, errors: res.errors
+        }));
+        if (res.done) {
+          hide($('progressArea'));
+          setText('resultSummary', tr('resultSummaryAccept', {
+            accepted: res.accepted || res.offered || 0, skipped: res.skipped, errors: res.errors
+          }));
+          if (res.errorList && res.errorList.length) {
+            var ul = $('errlist');
+            ul.innerHTML = '';
+            res.errorList.slice(0, 20).forEach(function (it) {
+              var li = document.createElement('li');
+              li.textContent = (it.name || it.id) + ': ' + it.message;
+              ul.appendChild(li);
+            });
+            show(ul);
+          }
+          show($('resultArea'));
+          return;
+        }
+        run('continueAccept', [res.token]).then(stepAccept).catch(fail);
       }
 
       function finish(res) {
