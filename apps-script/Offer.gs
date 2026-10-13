@@ -551,10 +551,11 @@ function runAcceptScan_(token) {
       token: token,
       count: flat.length,
       bytesFound: state.bytesFound,
-    bytesFormatted: fmtBytes_(state.bytesFound),
-    totalBytes: state.totalBytes,
-    trees: treeRes.trees
-  };
+    bytesFound: state.bytesFound,
+      bytesFormatted: fmtBytes_(state.bytesFound),
+      bytesFormattedTotal: fmtBytes_(state.bytesFound),
+      trees: treeRes.trees
+    };
   }
   saveState_(token, state);
   return {

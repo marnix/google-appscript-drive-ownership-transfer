@@ -319,7 +319,7 @@
         if (res.done) {
           scanToken = res.token;
           hide($('progressArea'));
-          setText('countResult', tr('countLabelAccept', { n: res.count }));
+          setText('countResult', tr('countLabelAccept', { n: res.count, bytes: res.bytesFormatted || fmtBytesLocal(res.bytesFound || 0) }));
           $('countBtn').disabled = false;
           if (res.count > 0) {
             renderTree(res.trees);
@@ -424,11 +424,15 @@
         show($('resultArea'));
       }
 
-      function fail(e) {
-        hide($('progressArea'));
-        $('countBtn').disabled = false;
-        $('offerBtn').disabled = false;
-        showError((e && e.message) || String(e));
+      function fmtBytesLocal(b) {
+        if (!b || b <= 0) return '0 B';
+        var units = ['B','KB','MB','GB','TB','PB'];
+        var i = Math.floor(Math.log(b)/Math.log(1024));
+        if (i<0) i=0; if (i>units.length-1) i=units.length-1;
+        var v = b/Math.pow(1024,i);
+        var s = (i===0?v.toFixed(0):v.toFixed(1));
+        if (LANG === 'nl') s = s.replace('.', ',');
+        return s + ' ' + units[i];
       }
 
       boot();
