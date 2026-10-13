@@ -753,7 +753,7 @@ function buildAcceptTree_(items) {
   // Expand up to ancestors to build full hierarchy
   var expanded = true;
   var guard = 0;
-  while (expanded && guard < 20) {
+  while (expanded && guard < 50) {
     expanded = false;
     guard++;
     var currentIds = Object.keys(nodesById);
