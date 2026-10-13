@@ -257,6 +257,8 @@
               $('countBtn').disabled = true;
               hide($('offerArea'));
             }
+            setText('nothingMoves', tr('nothingMoves'));
+            show($('notice'));
             hide($('roleNote'));
           }
         }).catch(function (e) {
