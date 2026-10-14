@@ -624,8 +624,7 @@ function startAcceptScan() {
     bytesChecked: 0,
     bytesFound: 0,
     checked: 0,
-    totalBytes: totalBytes,
-    ownerCounts: {}
+    totalBytes: totalBytes
   };
   saveState_(token, state);
   return runAcceptScan_(token);
@@ -838,4 +837,18 @@ function buildAcceptTree_(items) {
     if (rt.transfers > 0) pruned.push(rt);
   }
   return { trees: pruned.length ? pruned : [], count: count };
+}
+function cleanupStaleJobs() {
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties();
+  var keys = Object.keys(all);
+  var removed = 0;
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (k.indexOf('job_') === 0) {
+      props.deleteProperty(k);
+      removed++;
+    }
+  }
+  return removed;
 }
