@@ -116,6 +116,7 @@ function startScan() {
     });
     pageToken = res.nextPageToken;
   } while (pageToken);
+  try { cleanupStaleJobs(); } catch (e) {}
   saveState_(token, state);
   return runScan_(token);
 }
@@ -626,6 +627,7 @@ function startAcceptScan() {
     checked: 0,
     totalBytes: totalBytes
   };
+  try { cleanupStaleJobs(); } catch (e) {}
   saveState_(token, state);
   return runAcceptScan_(token);
 }
@@ -650,8 +652,18 @@ function runAcceptScan_(token) {
     state.items = flat;
     saveState_(token, state);
     var ownersList = [];
-    for (var oe in state.ownerCounts) {
-      if (state.ownerCounts.hasOwnProperty(oe)) ownersList.push({ email: oe, count: state.ownerCounts[oe] });
+    var ownerCounts = {};
+    for (var fi = 0; fi < flat.length; fi++) {
+      var owners = flat[fi].owners || [];
+      for (var o = 0; o < owners.length; o++) {
+        var oe = String(owners[o].emailAddress || '').toLowerCase();
+        if (oe && oe !== state.target.toLowerCase()) {
+          ownerCounts[oe] = (ownerCounts[oe] || 0) + 1;
+        }
+      }
+    }
+    for (var oe2 in ownerCounts) {
+      if (ownerCounts.hasOwnProperty(oe2)) ownersList.push({ email: oe2, count: ownerCounts[oe2] });
     }
     ownersList.sort(function (a, b) { return b.count - a.count; });
     return {
@@ -707,13 +719,6 @@ function scanAcceptPage_(state) {
             owners: f.owners || []
           });
           state.bytesFound += Number(f.size || 0);
-          var owners = f.owners || [];
-          for (var o = 0; o < owners.length; o++) {
-            var oe = String(owners[o].emailAddress || '').toLowerCase();
-            if (oe && oe !== targetLc) {
-              state.ownerCounts[oe] = (state.ownerCounts[oe] || 0) + 1;
-            }
-          }
         }
         break;
       }
